@@ -1,5 +1,4 @@
 use std::{
-    cmp::Ordering,
     fmt::{Debug, Display},
     ops::{Index, IndexMut},
     usize,
@@ -41,18 +40,18 @@ impl Board {
         let mut res = Board::new();
         while let Some(mut actual) = stack.pop() {
             actual.filter_board();
-            res = actual;
             if res.is_solve() {
+                res = actual;
                 break;
             }
             let (x, y) = self.get_lowest_undefine();
-            let mut val = self[x][y];
+            let mut val = actual[x][y];
             println!("val[{x}][{y}]: {val}");
             let mut c = 0;
             while val > 0 {
                 let temp = val & 1;
                 if temp != 0 {
-                    let mut attempt = self.clone();
+                    let mut attempt = actual.clone();
                     attempt[x][y] = 1 << c;
                     attempt.to_modifys.push((x, y));
                     println!("{x},{y}: {}", 1 << c);
@@ -67,19 +66,15 @@ impl Board {
         return res;
     }
     fn get_lowest_undefine(&self) -> (usize, usize) {
-        let mut i = 0;
-        let mut min = 9;
-        let mut min_val = 0x1FF;
-        while min.count_ones() != 2 && i < 81 {
-            let count = min.count_zeros();
-            if count == 1 {
-                i += 1;
-                continue;
-            }
-
-            i += 1;
-        }
-        return min;
+        let i = self
+            .inner
+            .iter()
+            .enumerate()
+            .filter(|(_, &i)| i.count_ones() != 1)
+            .min_by(|(_, &i), (_, j)| i.cmp(j))
+            .unwrap()
+            .0;
+        (i / 9, i % 9)
     }
     fn filter_board(&mut self) {
         loop {
