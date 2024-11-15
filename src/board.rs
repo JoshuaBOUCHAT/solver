@@ -27,16 +27,7 @@ impl Board {
         }
     }
     pub fn solve(&self) -> Self {
-        let mut init = self.clone();
-        for i in 0..9 {
-            for j in 0..9 {
-                let temp = init[i][j];
-                if temp.count_ones() == 1 {
-                    init.to_modifys.push((i, j));
-                }
-            }
-        }
-        let mut stack = vec![init];
+        let mut stack = vec![self.first_solve()];
         let mut res = Board::new();
         while let Some(mut actual) = stack.pop() {
             actual.filter_board();
@@ -64,6 +55,19 @@ impl Board {
             }
         }
         return res;
+    }
+    fn first_solve(&self) -> Self {
+        let mut init = self.clone();
+        for i in 0..9 {
+            for j in 0..9 {
+                let temp = init[i][j];
+                if temp.count_ones() == 1 {
+                    init.to_modifys.push((i, j));
+                }
+            }
+        }
+        init.filter_board();
+        init
     }
     fn get_lowest_undefine(&self) -> (usize, usize) {
         let i = self
@@ -208,7 +212,7 @@ impl Board {
         }
     }
 
-    pub fn transform_back(self, vec: &mut Vec<Vec<char>>) {
+    pub fn _transform_back(self, vec: &mut Vec<Vec<char>>) {
         for i in 0..9 {
             for j in 0..9 {
                 vec[i][j] = (((16 - (self[i][j].leading_zeros())) as u8) + '0' as u8) as char
