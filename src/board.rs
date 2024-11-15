@@ -21,42 +21,50 @@ fn apply_filter(n: &mut u16, mask: u16) -> bool {
 
 impl Board {
     fn new() -> Self {
+        let inner = [INIT; 81];
         Self {
-            inner: [INIT; 81],
-            to_modifys: vec![],
+            inner,
+            to_modifys: Vec::with_capacity(10),
         }
     }
-    pub fn solve(&self) -> Self {
-        let mut stack = vec![self.first_solve()];
-        let mut res = Board::new();
+    pub fn solve(&self) -> Option<Self> {
+        let mut first = self.clone();
+        first.init_modifys();
+        let mut stack = vec![first];
+        let mut res = None;
         while let Some(mut actual) = stack.pop() {
             actual.filter_board();
-            if res.is_solve() {
-                res = actual;
+            if actual.is_solve() {
+                res = Some(actual);
                 break;
             }
-            let (x, y) = self.get_lowest_undefine();
-            let mut val = actual[x][y];
-            println!("val[{x}][{y}]: {val}");
-            let mut c = 0;
-            while val > 0 {
-                let temp = val & 1;
-                if temp != 0 {
-                    let mut attempt = actual.clone();
-                    attempt[x][y] = 1 << c;
-                    attempt.to_modifys.push((x, y));
-                    println!("{x},{y}: {}", 1 << c);
-                    //println!("{}", &attempt);
-                    //stack.push(attempt);
-                }
-
-                c += 1;
-                val >>= 1;
+            if actual.is_wrong() {
+                continue;
             }
+            let mut alternative = actual.get_alternative();
+            stack.append(&mut alternative);
         }
         return res;
     }
-    fn first_solve(&self) -> Self {
+    fn get_alternative(&self) -> Vec<Board> {
+        let mut vec = vec![];
+        let (x, y) = self.get_lowest_undefine();
+        let mut val = self[x][y];
+        let mut i = 0;
+        while val > 0 {
+            let temp = val & 1;
+            if temp == 1 {
+                let mut board = self.clone();
+                board[x][y] = temp << i;
+                board.to_modifys.push((x, y));
+                vec.push(board);
+            }
+            val /= 2;
+            i += 1;
+        }
+        vec
+    }
+    fn init_modifys(&mut self) {
         let mut init = self.clone();
         for i in 0..9 {
             for j in 0..9 {
@@ -66,9 +74,8 @@ impl Board {
                 }
             }
         }
-        init.filter_board();
-        init
     }
+
     fn get_lowest_undefine(&self) -> (usize, usize) {
         let i = self
             .inner
@@ -221,6 +228,9 @@ impl Board {
     }
     fn is_solve(&self) -> bool {
         self.inner.iter().all(|i| i.count_ones() == 1)
+    }
+    fn is_wrong(&self) -> bool {
+        self.inner.iter().any(|&f| f == 0)
     }
 }
 impl From<&Vec<Vec<char>>> for Board {
