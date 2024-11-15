@@ -1,5 +1,6 @@
 use std::{
     fmt::{Debug, Display},
+    io::IoSlice,
     ops::{Index, IndexMut},
     usize,
 };
@@ -32,7 +33,9 @@ impl Board {
         first.init_modifys();
         let mut stack = vec![first];
         let mut res = None;
+        let mut count = 0;
         while let Some(mut actual) = stack.pop() {
+            count += 1;
             actual.filter_board();
             if actual.is_solve() {
                 res = Some(actual);
@@ -44,6 +47,7 @@ impl Board {
             let mut alternative = actual.get_alternative();
             stack.append(&mut alternative);
         }
+        println!("Besoins d'explorer {} branches", count);
         return res;
     }
     fn get_alternative(&self) -> Vec<Board> {
@@ -227,12 +231,59 @@ impl Board {
         }
     }
     fn is_solve(&self) -> bool {
-        self.inner.iter().all(|i| i.count_ones() == 1)
+        self.inner.iter().all(|i| i.count_ones() == 1) && !self.is_wrong()
     }
-    fn is_wrong(&self) -> bool {
-        self.inner.iter().any(|&f| f == 0)
+    pub fn is_wrong(&self) -> bool {
+        if self.inner.iter().any(|&f| f == 0) {
+            return true;
+        }
+        for i in 0..9 {
+            let mut mask = 0;
+            for j in 0..9 {
+                let temp = self[i][j];
+                if temp.count_ones() == 1 {
+                    if mask & temp != 0 {
+                        return true;
+                    }
+                    mask |= temp;
+                }
+            }
+        }
+        for j in 0..9 {
+            let mut mask = 0;
+            for i in 0..9 {
+                let temp = self[i][j];
+                if temp.count_ones() == 1 {
+                    if mask & temp != 0 {
+                        return true;
+                    }
+                    mask |= temp;
+                }
+            }
+        }
+        for blk_x in 0..3 {
+            for blk_y in 0..3 {
+                let mut mask = 0;
+                for i in 0..3 {
+                    let row = blk_x * 3 + i;
+                    for j in 0..3 {
+                        let col = blk_y * 3 + j;
+                        let temp = self[row][col];
+                        if temp.count_ones() == 1 {
+                            if mask & temp != 0 {
+                                return true;
+                            }
+                            mask |= temp;
+                        }
+                    }
+                }
+            }
+        }
+
+        false
     }
 }
+
 impl From<&Vec<Vec<char>>> for Board {
     fn from(value: &Vec<Vec<char>>) -> Self {
         let mut ret = Self::new();
@@ -312,5 +363,24 @@ impl Debug for Board {
             }
         }
         writeln!(f)
+    }
+}
+impl TryFrom<&[u16]> for Board {
+    type Error = ();
+    fn try_from(values: &[u16]) -> Result<Self, Self::Error> {
+        if values.len() != 81 {
+            return Err(());
+        }
+        Ok(Self {
+            inner: core::array::from_fn(|i| {
+                let temp = values[i];
+                if temp == 0 {
+                    INIT
+                } else {
+                    1 << (temp - 1)
+                }
+            }),
+            to_modifys: Vec::with_capacity(10),
+        })
     }
 }
